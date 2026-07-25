@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SoebiFarm IoT Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  
+  <!-- NAVBAR GLOBAL -->
+  <header class="topbar">
+  <div class="brand" style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
+      <div class="brand-text">
+        <h1 style="line-height: 1; margin-bottom: 4px;">SOEBIFarmstay</h1>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <img src="{{ url_for('static', filename='logosoebi.jpeg') }}" alt="Logo SoebiFarm" style="width: 35px; height: 35px; object-fit: contain;">
+        <span class="brand-sub">Smart Green Agriculture</span>
+      </div>
+    </div>
+    <div class="header-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+      <span class="badge outline" id="ui-status">Menghubungkan...</span>
+      <span class="clock" id="ui-clock" style="font-size: 0.85rem; margin-top: 2px;">--:--:--</span>
+    </div>
+  </header>
+
+  <!-- KONTEN DINAMIS AKAN MASUK KE SINI -->
+  <main class="grid">
+    {% block content %}
+    {% endblock %}
+  </main>
+
+  <!-- MODAL GLOBAL TAMBAH JADWAL -->
+  <div class="modal-overlay" id="scheduleModal">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h3 style="margin:0; font-size: 1.2rem; color: var(--text);">Tambah Jadwal</h3>
+        <button id="btnCloseModal" style="border:none; background:none; font-size:1.8rem; cursor:pointer; color: var(--text-dim); line-height: 1;">&times;</button>
+      </div>
+      <form action="/schedule/add" method="post">
+        <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-dim); display: block; margin-bottom: 8px;">Waktu Mulai (Jam:Menit)</label>
+        <input type="time" name="time" class="form-input" required>
+        
+        <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-dim); display: block; margin-bottom: 8px;">Durasi Menyala (Menit)</label>
+        <input type="number" name="duration" class="form-input" placeholder="Contoh: 15" min="1" max="120" required>
+        
+        <button type="submit" class="mini-btn" style="width: 100%; padding: 14px; font-size: 1rem; color: white; background: var(--accent);">Simpan Jadwal</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- BLOK UNTUK SCRIPT SPESIFIK HALAMAN -->
+  {% block scripts %}
+  {% endblock %}
+
+</body>
+</html>

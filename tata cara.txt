@@ -1,0 +1,126 @@
+================================================================================
+PANDUAN DEPLOY APLIKASI SMART FARMING KE DOMAIN SENDIRI
+================================================================================
+
+Dokumentasi ini mencakup langkah-langkah untuk memindahkan aplikasi Flask dan 
+database PostgreSQL dari komputer lokal (localhost) ke VPS (Virtual Private Server) 
+menggunakan domain pribadi, lengkap dengan pengaturan Nginx, Gunicorn, dan 
+penyesuaian pada perangkat IoT (ESP8266).
+
+--------------------------------------------------------------------------------
+PRASYARAT SEBELUM MEMULAI
+--------------------------------------------------------------------------------
+1. VPS (Virtual Private Server) yang menjalankan sistem operasi Ubuntu/Linux.
+2. Domain aktif yang sudah dibeli (contoh: smartfarming-ku.com).
+3. Akses SSH ke VPS.
+
+--------------------------------------------------------------------------------
+LANGKAH 1: PERSIAPAN SERVER VPS
+--------------------------------------------------------------------------------
+Masuk ke VPS melalui terminal SSH, lalu update sistem dan install dependensi utama:
+
+sudo apt update && sudo apt upgrade -y
+sudo apt install python3-pip python3-dev python3-venv postgresql postgresql-contrib nginx git -y
+
+--------------------------------------------------------------------------------
+LANGKAH 2: BUAT DATABASE POSTGRESQL DI VPS
+--------------------------------------------------------------------------------
+1. Masuk ke terminal PostgreSQL:
+   sudo -u postgres psql
+
+2. Buat database dan user baru:
+   CREATE DATABASE smartfarming_db;
+   CREATE USER postgres WITH ENCRYPTED PASSWORD 'password_aman_kamu';
+   GRANT ALL PRIVILEGES ON DATABASE smartfarming_db TO postgres;
+   \q
+
+--------------------------------------------------------------------------------
+LANGKAH 3: UPLOAD & SETUP PROYEK DI VPS
+--------------------------------------------------------------------------------
+1. Upload/clone folder proyek ke VPS (misalnya ke /var/www/smartfarming-project).
+2. Masuk ke folder proyek:
+   cd /var/www/smartfarming-project
+
+3. Buat dan aktifkan Virtual Environment:
+   python3 -m venv venv
+   source venv/bin/activate
+
+4. Install dependencies:
+   pip install --upgrade pip
+   pip install -r requirements.txt
+   pip install gunicorn python-dotenv
+
+5. Buat file .env baru di server:
+   nano .env
+   
+   Isi dengan:
+   DATABASE_URL=postgresql+pg8000://postgres:password_aman_kamu@localhost:5432/smartfarming_db
+   
+   (Simpan dan keluar: Ctrl + O, Enter, Ctrl + X)
+
+--------------------------------------------------------------------------------
+LANGKAH 4: KONFIGURASI GUNICORN (WSGI SERVER)
+--------------------------------------------------------------------------------
+Buat file Systemd Service untuk Gunicorn:
+sudo nano /etc/systemd/system/smartfarming.service
+
+Isi dengan konfigurasi berikut:
+[Unit]
+Description=Gunicorn instance to serve Smart Farming Flask App
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/var/www/smartfarming-project
+ExecStart=/var/www/smartfarming-project/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5000 app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+Simpan file, lalu aktifkan servicenya:
+sudo systemctl daemon-reload
+sudo systemctl start smartfarming
+sudo systemctl enable smartfarming
+
+--------------------------------------------------------------------------------
+LANGKAH 5: HUBUNGKAN DOMAIN KE NGINX (REVERSE PROXY)
+--------------------------------------------------------------------------------
+1. Buat file konfigurasi Nginx:
+   sudo nano /etc/nginx/sites-available/smartfarming
+
+2. Isi dengan konfigurasi berikut (ubah namadomainmu.com dengan domain kamu):
+   server {
+       listen 80;
+       server_name namadomainmu.com www.namadomainmu.com;
+
+       location / {
+           include proxy_params;
+           proxy_pass http://127.0.0.1:5000;
+           proxy_read_timeout 300s;
+           proxy_connect_timeout 300s;
+       }
+   }
+
+3. Aktifkan konfigurasi dan restart Nginx:
+   sudo ln -s /etc/nginx/sites-available/smartfarming /etc/nginx/sites-enabled/
+   sudo nginx -t
+   sudo systemctl restart nginx
+
+(Catatan DNS: Arahkan A Record domain Anda di panel registrar ke IP Public VPS).
+
+--------------------------------------------------------------------------------
+LANGKAH 6: PASANG SSL (HTTPS) GRATIS
+--------------------------------------------------------------------------------
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d namadomainmu.com -d www.namadomainmu.com
+
+--------------------------------------------------------------------------------
+LANGKAH 7: PENYESUAIAN PADA ALAT IOT (ESP8266)
+--------------------------------------------------------------------------------
+Ubah variabel SERVER_HOST di kode Arduino (ESP8266) Anda menjadi domain publik:
+
+const char* SERVER_HOST = "https://namadomainmu.com";
+
+Upload ulang (re-flash) kode ke ESP8266. Selesai!
+================================================================================

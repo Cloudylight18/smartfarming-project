@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <!-- KONTROL SISTEM UTAMA -->
+  <section class="card" style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px;">
+    
+    <!-- PEMILIHAN MODE & POMPA -->
+    <div>
+      <div class="card-head">
+        <div class="card-title-group">
+          <span class="icon">⚙️</span><h2>Mode Manual,Otomatis & Pompa</h2>
+        </div>
+      </div>
+      
+      <div class="mode-selector">
+        <button class="mode-btn active" id="btn-mode-manual" onclick="changeMode('MANUAL')">Manual</button>
+        <button class="mode-btn" id="btn-mode-otomatis" onclick="changeMode('OTOMATIS')">Otomatis</button>
+        <button class="mode-btn" id="btn-mode-jadwal" onclick="changeMode('JADWAL')">Terjadwal</button>
+      </div>
+
+      <div class="control-panel">
+        <button class="power-btn" id="btnPower" onclick="toggleActuator()">
+          <span class="icon" id="power-icon">💧</span>
+          <span id="power-label">OFF</span>
+        </button>
+        <div style="text-align: center;">
+          <strong id="actuator-status" style="font-size: 1.1rem;">BERHENTI</strong><br>
+          <small id="actuator-source" style="color: var(--text-dim);">Mode saat ini: Manual</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- PENJADWALAN -->
+    <div>
+      <div class="card-head">
+        <div class="card-title-group">
+          <span class="icon">⏰</span><h2>Jadwal Penyiraman</h2>
+        </div>
+        <button class="mini-btn" id="btnOpenModal">+ Tambah</button>
+      </div>
+      <ul class="list-ui" id="schedule-list">
+        <li style="justify-content: center; color: var(--text-dim); border: none; background: transparent;">Memuat jadwal...</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- SENSOR TANAH -->
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title-group"><span class="icon">🌱</span><h2>Kadar Air Tanah</h2></div>
+      <span class="badge" id="badge-tanah">Normal</span>
+    </div>
+    <div class="sensor-main">
+      <div class="value-row"><span class="value" id="val-tanah">--</span><span class="unit">%</span></div>
+    </div>
+    <div style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 10px;">
+      <em>SOP Internasional: &lt;30% (Kering), 30-60% (Ideal), &gt;60% (Basah)</em>
+    </div>
+    <div class="chart-container"><canvas id="chartTanah"></canvas></div>
+  </section>
+
+  <!-- SENSOR KELEMBAPAN UDARA -->
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title-group"><span class="icon">💨</span><h2>Kelembapan Udara</h2></div>
+      <span class="badge" id="badge-lembap">Normal</span>
+    </div>
+    <div class="sensor-main">
+      <div class="value-row"><span class="value" id="val-lembap">--</span><span class="unit">%</span></div>
+    </div>
+    <div style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 10px;">
+      <em>Kelembapan udara ideal: 40% - 70%</em>
+    </div>
+    <div class="chart-container"><canvas id="chartLembap"></canvas></div>
+  </section>
+
+  <!-- SENSOR SUHU UDARA -->
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title-group"><span class="icon">🌡️</span><h2>Suhu Udara</h2></div>
+      <span class="badge" id="badge-suhu">Normal</span>
+    </div>
+    <div class="sensor-main">
+      <div class="value-row"><span class="value" id="val-suhu">--</span><span class="unit">°C</span></div>
+    </div>
+    <div style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 10px;">
+      <em>Suhu udara ideal: 20°C - 30°C</em>
+    </div>
+    <div class="chart-container"><canvas id="chartSuhu"></canvas></div>
+  </section>
+
+  <!-- LOG AKTIVITAS -->
+  <section class="card" style="grid-column: 1 / -1;">
+    <div class="card-head">
+      <div class="card-title-group"><span class="icon">📋</span><h2>History Log System</h2></div>
+    </div>
+    <ul class="list-ui logs" id="log-list">
+      <li>Memuat log...</li>
+    </ul>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  Chart.defaults.color = '#9ca3af'; 
+  Chart.defaults.font.family = 'Inter';
+  
+  function createChart(ctxId, colorStr) {
+    const ctx = document.getElementById(ctxId).getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 120);
+    gradient.addColorStop(0, colorStr + '40'); 
+    gradient.addColorStop(1, colorStr + '00');
+    return new Chart(ctx, {
+      type: 'line',
+      data: { labels: [], datasets: [{ data: [], borderColor: colorStr, backgroundColor: gradient, borderWidth: 3, fill: true, tension: 0.4, pointRadius: 0, pointHoverRadius: 6 }] },
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false, 
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }, 
+        scales: { 
+          x: { display: false }, 
+          /* PERBAIKAN: Sumbu Y dimunculkan sedikit dan dipaksa mulai dari 0 */
+          y: { display: true, beginAtZero: true, suggestedMin: 0, ticks: { maxTicksLimit: 5 } } 
+        } 
+      }
+    });
+  }
+  
+  const chartTanah = createChart('chartTanah', '#10b981');
+  const chartLembap = createChart('chartLembap', '#0ea5e9');
+  const chartSuhu = createChart('chartSuhu', '#f59e0b');
+
+  function updateDashboard() {
+    fetch('/api/data').then(res => res.json()).then(data => {
+      document.getElementById('ui-clock').innerText = data.now;
+      const sBadge = document.getElementById('ui-status');
+      sBadge.innerText = data.data_source === 'esp32' ? 'Terhubung (Online)' : data.data_source;
+      sBadge.style.color = data.data_source === 'esp32' ? 'var(--success)' : 'var(--warn)';
+      
+      document.getElementById('val-tanah').innerText = data.tanah;
+      document.getElementById('badge-tanah').innerText = data.tanah_label;
+      document.getElementById('badge-tanah').className = 'badge ' + data.tanah_cls;
+
+      document.getElementById('val-lembap').innerText = data.lembap;
+      document.getElementById('badge-lembap').innerText = data.lembap_label;
+      document.getElementById('badge-lembap').className = 'badge ' + data.lembap_cls;
+      
+      document.getElementById('val-suhu').innerText = data.suhu;
+      document.getElementById('badge-suhu').innerText = data.suhu_label;
+      document.getElementById('badge-suhu').className = 'badge ' + data.suhu_cls;
+
+      chartTanah.data.labels = data.time_history; chartTanah.data.datasets[0].data = data.tanah_history; chartTanah.update();
+      chartLembap.data.labels = data.time_history; chartLembap.data.datasets[0].data = data.lembap_history; chartLembap.update();
+      chartSuhu.data.labels = data.time_history; chartSuhu.data.datasets[0].data = data.suhu_history; chartSuhu.update();
+
+      document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('btn-mode-' + data.mode.toLowerCase()).classList.add('active');
+
+      const btnPower = document.getElementById('btnPower');
+      btnPower.disabled = (data.mode !== 'MANUAL'); 
+      
+      if (data.actuator_on) {
+        btnPower.classList.add('on');
+        document.getElementById('power-label').innerText = 'ON';
+        document.getElementById('actuator-status').innerText = 'AIR MENGALIR';
+        document.getElementById('actuator-status').style.color = 'var(--accent)';
+      } else {
+        btnPower.classList.remove('on');
+        document.getElementById('power-label').innerText = 'OFF';
+        document.getElementById('actuator-status').innerText = 'BERHENTI';
+        document.getElementById('actuator-status').style.color = 'var(--text)';
+      }
+      document.getElementById('actuator-source').innerText = `Pemicu: ${data.actuator_source}`;
+
+      const logList = document.getElementById('log-list'); logList.innerHTML = '';
+      data.logs.forEach(log => { logList.innerHTML += `<li>${log}</li>`; });
+
+      const schedList = document.getElementById('schedule-list'); schedList.innerHTML = '';
+      if(data.schedules.length === 0) schedList.innerHTML = '<li style="justify-content:center; color:var(--text-dim); background:transparent; border:none;">Belum ada jadwal.</li>';
+      else data.schedules.forEach(s => {
+        schedList.innerHTML += `<li><span>⏰ <strong>${s.time}</strong> (${s.duration} menit)</span>
+          <button class="mini-btn danger" onclick="deleteSched('${s.id}')">Hapus</button></li>`;
+      });
+    });
+  }
+
+  function changeMode(newMode) {
+    fetch('/api/mode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: newMode })
+    }).then(() => updateDashboard());
+  }
+
+  function toggleActuator() { fetch('/aktuator/toggle', { method: 'POST' }).then(() => updateDashboard()); }
+  function deleteSched(id) { fetch('/schedule/delete/' + id, { method: 'POST' }).then(() => updateDashboard()); }
+
+  document.getElementById('btnOpenModal').onclick = () => document.getElementById('scheduleModal').classList.add('active');
+  document.getElementById('btnCloseModal').onclick = () => document.getElementById('scheduleModal').classList.remove('active');
+
+  setInterval(updateDashboard, 1000); updateDashboard();
+</script>
+{% endblock %}
